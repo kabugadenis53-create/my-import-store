@@ -1,0 +1,53 @@
+﻿import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+load_dotenv()
+
+DATABASE_DIRECTORY = Path("data")
+DATABASE_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
+USER = os.getenv("user")
+PASSWORD = os.getenv("password")
+HOST = os.getenv("host")
+PORT = os.getenv("port", "5432")
+DBNAME = os.getenv("dbname", "postgres")
+
+if USER and PASSWORD and HOST:
+    DATABASE_URL = (
+        f"postgresql+psycopg://{USER}:{PASSWORD}"
+        f"@{HOST}:{PORT}/{DBNAME}?sslmode=require"
+    )
+else:
+    DATABASE_URL = "sqlite:///data/sales_accounts.db"
+
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_pre_ping=DATABASE_URL.startswith("postgresql"),
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_session():
+    """Create a database session."""
+    return SessionLocal()
+
+
+def create_tables() -> None:
+    """Create all database tables."""
+    from src.models import Account, Contact  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
